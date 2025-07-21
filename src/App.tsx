@@ -1,14 +1,20 @@
 import React, { useState, useCallback } from 'react';
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import FileUpload from './components/FileUpload';
 import DataTable from './components/DataTable';
+import AuthCallback from './components/AuthCallback';
+import LoginButton from './components/LoginButton';
+import UserProfile from './components/UserProfile';
 import { uploadFiles, ApiResponse } from './services/api';
-import { FileText, AlertCircle } from 'lucide-react';
+import { FileText, AlertCircle, Loader2 } from 'lucide-react';
+import { useAuth } from './hooks/useAuth';
 
-function App() {
+const MainApp: React.FC = () => {
   const [files, setFiles] = useState<File[]>([]);
   const [data, setData] = useState<Record<string, any>[]>([]);
   const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { isAuthenticated, user, loading, logout } = useAuth();
 
   const handleFilesChange = useCallback((newFiles: File[]) => {
     setFiles(newFiles);
@@ -42,18 +48,47 @@ function App() {
     console.log('CSV download initiated');
   }, []);
 
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="w-12 h-12 text-blue-600 animate-spin mx-auto mb-4" />
+          <p className="text-gray-600">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return (
+      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
+        <div className="bg-white p-8 rounded-lg shadow-lg max-w-md w-full text-center">
+          <FileText className="w-16 h-16 text-blue-600 mx-auto mb-6" />
+          <h1 className="text-2xl font-bold text-gray-900 mb-4">Invoice Parser</h1>
+          <p className="text-gray-600 mb-6">
+            Sign in with your Google account to start processing invoices and documents.
+          </p>
+          <LoginButton className="w-full justify-center" />
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gray-100">
       <div className="max-w-7xl mx-auto px-4 py-8">
         {/* Header */}
-        <div className="mb-8">
-          <div className="flex items-center gap-3 mb-2">
-            <FileText className="w-8 h-8 text-blue-600" />
-            <h1 className="text-3xl font-bold text-gray-900">File Processor</h1>
+        <div className="mb-8 flex justify-between items-start">
+          <div>
+            <div className="flex items-center gap-3 mb-2">
+              <FileText className="w-8 h-8 text-blue-600" />
+              <h1 className="text-3xl font-bold text-gray-900">Invoice Parser</h1>
+            </div>
+            <p className="text-gray-600">
+              Upload invoices, receipts, or documents to extract and analyze data
+            </p>
           </div>
-          <p className="text-gray-600">
-            Upload images, PDFs, or folders to process and analyze your files
-          </p>
+          {user && <UserProfile user={user} onLogout={logout} />}
         </div>
 
         {/* Error Display */}
@@ -70,7 +105,7 @@ function App() {
         <div className="grid grid-cols-1 gap-8">
           {/* Upload Section */}
           <div className="bg-white rounded-lg shadow-sm p-6">
-            <h2 className="text-xl font-semibold text-gray-800 mb-4">Upload Files</h2>
+            <h2 className="text-xl font-semibold text-gray-800 mb-4">Upload Documents</h2>
             <FileUpload
               files={files}
               onFilesChange={handleFilesChange}
@@ -92,10 +127,21 @@ function App() {
 
         {/* Footer */}
         <div className="mt-12 text-center text-gray-500 text-sm">
-          <p>Supported formats: JPG, PNG, GIF, PDF • Maximum file size: 10MB per file</p>
+          <p>Supported formats: JPG, PNG, GIF, PDF • Secure processing with Google authentication</p>
         </div>
       </div>
     </div>
+  );
+};
+
+function App() {
+  return (
+    <Router>
+      <Routes>
+        <Route path="/" element={<MainApp />} />
+        <Route path="/oauth2/callback" element={<AuthCallback />} />
+      </Routes>
+    </Router>
   );
 }
 
