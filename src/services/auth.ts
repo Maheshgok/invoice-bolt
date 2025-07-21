@@ -2,8 +2,12 @@ import Cookies from 'js-cookie';
 import { User, GoogleAuthResponse } from '../types/auth';
 
 const CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID;
-const REDIRECT_URI = 'https://invoiceparse.netlify.app/oauth2/callback';
 const SCOPES = 'openid email profile';
+
+// Get the current domain's redirect URI
+const getRedirectUri = (): string => {
+  return `${window.location.origin}/oauth2/callback`;
+};
 
 export class AuthService {
   private static instance: AuthService;
@@ -17,9 +21,10 @@ export class AuthService {
 
   // Generate OAuth2 authorization URL
   getAuthUrl(): string {
+    const redirectUri = getRedirectUri();
     const params = new URLSearchParams({
       client_id: CLIENT_ID,
-      redirect_uri: REDIRECT_URI,
+      redirect_uri: redirectUri,
       response_type: 'code',
       scope: SCOPES,
       access_type: 'offline',
@@ -31,6 +36,7 @@ export class AuthService {
 
   // Exchange authorization code for tokens
   async exchangeCodeForTokens(code: string): Promise<GoogleAuthResponse> {
+    const redirectUri = getRedirectUri();
     const response = await fetch('/api/auth/exchange', {
       method: 'POST',
       headers: {
@@ -38,7 +44,7 @@ export class AuthService {
       },
       body: JSON.stringify({
         code,
-        redirect_uri: REDIRECT_URI,
+        redirect_uri: redirectUri,
       }),
     });
 
