@@ -3,10 +3,14 @@ import { User, GoogleAuthResponse } from '../types/auth';
 
 const CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID;
 const SCOPES = 'openid email profile';
+const PRODUCTION_DOMAIN = 'https://invoiceparse.netlify.app';
 
-// Get the current domain's redirect URI
+// Get the redirect URI - use production domain in production, current domain in development
 const getRedirectUri = (): string => {
-  return `${window.location.origin}/oauth2/callback`;
+  // Use production domain if we're not in development
+  const isDevelopment = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+  const baseUrl = isDevelopment ? window.location.origin : PRODUCTION_DOMAIN;
+  return `${baseUrl}/oauth2/callback`;
 };
 
 export class AuthService {
