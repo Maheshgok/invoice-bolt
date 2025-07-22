@@ -47,6 +47,12 @@ export class AuthService {
   // Exchange authorization code for tokens
   async exchangeCodeForTokens(code: string): Promise<GoogleAuthResponse> {
     const redirectUri = getRedirectUri();
+    
+    console.log('Exchanging code for tokens...', { 
+      code: code.substring(0, 10) + '...', 
+      redirectUri 
+    });
+    
     const response = await fetch('/api/auth/exchange', {
       method: 'POST',
       headers: {
@@ -58,7 +64,11 @@ export class AuthService {
       }),
     });
 
+    console.log('Exchange response status:', response.status);
+    
     if (!response.ok) {
+      const errorText = await response.text();
+      console.error('Exchange error response:', errorText);
       throw new Error('Failed to exchange code for tokens');
     }
 
