@@ -68,7 +68,16 @@ const MainApp: React.FC = () => {
           <p className="text-gray-600 mb-6">
             Sign in with your Google account to start processing invoices and documents.
           </p>
-          <LoginButton className="w-full justify-center" />
+          {error && (
+            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-md">
+              <p className="text-red-600 text-sm">{error}</p>
+            </div>
+          )}
+          <LoginButton className="w-full justify-center" disabled={loading} />
+          <div className="mt-4 text-xs text-gray-500">
+            <p>Environment: {import.meta.env.MODE}</p>
+            <p>Client ID configured: {import.meta.env.VITE_GOOGLE_CLIENT_ID ? 'Yes' : 'No'}</p>
+          </div>
         </div>
       </div>
     );

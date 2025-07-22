@@ -25,13 +25,17 @@ export class AuthService {
 
   // Generate OAuth2 authorization URL
   getAuthUrl(): string {
-    if (!CLIENT_ID || CLIENT_ID === 'your_actual_google_client_id_here') {
+    console.log('CLIENT_ID check:', { CLIENT_ID, isDefined: !!CLIENT_ID });
+    
+    if (!CLIENT_ID || CLIENT_ID === 'your_google_client_id_here' || CLIENT_ID === 'your_actual_google_client_id_here') {
       console.log('Current CLIENT_ID:', CLIENT_ID);
       console.error('Google Client ID not configured properly');
       throw new Error('Google Client ID not configured. Please check your environment variables.');
     }
     
     const redirectUri = getRedirectUri();
+    console.log('OAuth URL generation:', { CLIENT_ID: CLIENT_ID.substring(0, 20) + '...', redirectUri });
+    
     const params = new URLSearchParams({
       client_id: CLIENT_ID,
       redirect_uri: redirectUri,
@@ -41,7 +45,9 @@ export class AuthService {
       prompt: 'consent'
     });
 
-    return `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`;
+    const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`;
+    console.log('Generated auth URL:', authUrl);
+    return authUrl;
   }
 
   // Exchange authorization code for tokens
