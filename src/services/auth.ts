@@ -1,7 +1,7 @@
 import Cookies from 'js-cookie';
 import { User, GoogleAuthResponse } from '../types/auth';
 
-const CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+const CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || 'your_actual_google_client_id_here';
 const SCOPES = 'openid email profile';
 const PRODUCTION_DOMAIN = 'https://invoiceparse.netlify.app';
 
