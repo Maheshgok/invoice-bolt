@@ -10,14 +10,18 @@ interface LoginButtonProps {
 const LoginButton: React.FC<LoginButtonProps> = ({ className = '', disabled = false }) => {
   // Debug environment variables
   React.useEffect(() => {
-    console.log('=== ENVIRONMENT DEBUG ===');
-    console.log('NODE_ENV:', import.meta.env.MODE);
-    console.log('VITE_GOOGLE_CLIENT_ID:', import.meta.env.VITE_GOOGLE_CLIENT_ID);
+    console.log('=== DETAILED ENVIRONMENT DEBUG ===');
+    console.log('Current working directory:', window.location.origin);
+    console.log('Vite mode:', import.meta.env.MODE);
+    console.log('Vite dev:', import.meta.env.DEV);
+    console.log('Raw VITE_GOOGLE_CLIENT_ID:', import.meta.env.VITE_GOOGLE_CLIENT_ID);
+    console.log('CLIENT_ID type:', typeof import.meta.env.VITE_GOOGLE_CLIENT_ID);
+    console.log('CLIENT_ID is undefined:', import.meta.env.VITE_GOOGLE_CLIENT_ID === undefined);
+    console.log('CLIENT_ID is empty string:', import.meta.env.VITE_GOOGLE_CLIENT_ID === '');
     console.log('CLIENT_ID length:', import.meta.env.VITE_GOOGLE_CLIENT_ID?.length);
-    console.log('CLIENT_ID starts with number:', /^\d/.test(import.meta.env.VITE_GOOGLE_CLIENT_ID || ''));
-    console.log('CLIENT_ID ends with .apps.googleusercontent.com:', import.meta.env.VITE_GOOGLE_CLIENT_ID?.endsWith('.apps.googleusercontent.com'));
-    console.log('All env vars:', import.meta.env);
-    console.log('========================');
+    console.log('All available env vars:', Object.keys(import.meta.env));
+    console.log('Full env object:', import.meta.env);
+    console.log('==================================');
   }, []);
 
   const handleLogin = () => {
