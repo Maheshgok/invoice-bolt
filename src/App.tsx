@@ -5,6 +5,7 @@ import DataTable from './components/DataTable';
 import AuthCallback from './components/AuthCallback';
 import LoginButton from './components/LoginButton';
 import UserProfile from './components/UserProfile';
+import EnvTest from './components/EnvTest';
 import { uploadFiles, ApiResponse } from './services/api';
 import { FileText, AlertCircle, Loader2 } from 'lucide-react';
 import { useAuth } from './hooks/useAuth';
@@ -68,6 +69,7 @@ const MainApp: React.FC = () => {
           <p className="text-gray-600 mb-6">
             Sign in with your Google account to start processing invoices and documents.
           </p>
+          <EnvTest />
           {error && (
             <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-md">
               <p className="text-red-600 text-sm">{error}</p>
