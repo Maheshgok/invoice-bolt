@@ -3,7 +3,7 @@ import { User, GoogleAuthResponse } from '../types/auth';
 
 const CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID;
 const SCOPES = 'openid email profile';
-const PRODUCTION_DOMAIN = 'https://invoiceparse.netlify.app';
+const PRODUCTION_DOMAIN = 'https://your-netlify-site.netlify.app'; // Replace with your actual Netlify URL
 
 // Get the redirect URI - use production domain in production, current domain in development
 const getRedirectUri = (): string => {
