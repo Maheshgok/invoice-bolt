@@ -2,6 +2,11 @@ const https = require('https');
 const querystring = require('querystring');
 
 exports.handler = async (event, context) => {
+  console.log('=== TOKEN EXCHANGE FUNCTION CALLED ===');
+  console.log('Method:', event.httpMethod);
+  console.log('Headers:', JSON.stringify(event.headers, null, 2));
+  console.log('Body:', event.body);
+  
   // Handle CORS
   const headers = {
     'Access-Control-Allow-Origin': '*',
@@ -38,9 +43,16 @@ exports.handler = async (event, context) => {
       };
     }
 
-    const clientId = process.env.VITE_GOOGLE_CLIENT_ID;
+    const clientId = process.env.VITE_GOOGLE_CLIENT_ID || process.env.GOOGLE_CLIENT_ID;
     const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
 
+    console.log('Environment check:', {
+      hasViteClientId: !!process.env.VITE_GOOGLE_CLIENT_ID,
+      hasGoogleClientId: !!process.env.GOOGLE_CLIENT_ID,
+      hasClientSecret: !!process.env.GOOGLE_CLIENT_SECRET,
+      clientIdLength: clientId?.length,
+      clientSecretLength: clientSecret?.length
+    });
     if (!clientId || !clientSecret) {
       console.error('Missing environment variables:', { 
         hasClientId: !!clientId, 
@@ -61,6 +73,7 @@ exports.handler = async (event, context) => {
       redirect_uri: redirect_uri,
     });
 
+    console.log('Making token request to Google...');
     const tokenResponse = await new Promise((resolve, reject) => {
       const req = https.request({
         hostname: 'oauth2.googleapis.com',
@@ -75,6 +88,8 @@ exports.handler = async (event, context) => {
         res.on('data', (chunk) => data += chunk);
         res.on('end', () => {
           try {
+            console.log('Google response status:', res.statusCode);
+            console.log('Google response data:', data);
             const parsed = JSON.parse(data);
             if (res.statusCode === 200) {
               resolve(parsed);
@@ -83,6 +98,7 @@ exports.handler = async (event, context) => {
               reject(new Error(parsed.error_description || parsed.error || 'Token exchange failed'));
             }
           } catch (e) {
+            console.error('Failed to parse Google response:', e);
             reject(new Error('Invalid response from Google'));
           }
         });
@@ -93,6 +109,7 @@ exports.handler = async (event, context) => {
       req.end();
     });
 
+    console.log('Token exchange successful');
     return {
       statusCode: 200,
       headers,

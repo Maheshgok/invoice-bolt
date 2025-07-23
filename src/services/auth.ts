@@ -73,7 +73,7 @@ export class AuthService {
       redirectUri 
     });
     
-    const response = await fetch('/api/auth/exchange', {
+    const response = await fetch('/.netlify/functions/auth-exchange', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
