@@ -8,16 +8,29 @@ interface LoginButtonProps {
 }
 
 const LoginButton: React.FC<LoginButtonProps> = ({ className = '', disabled = false }) => {
+  // Debug environment variables
+  React.useEffect(() => {
+    console.log('=== ENVIRONMENT DEBUG ===');
+    console.log('NODE_ENV:', import.meta.env.MODE);
+    console.log('VITE_GOOGLE_CLIENT_ID:', import.meta.env.VITE_GOOGLE_CLIENT_ID);
+    console.log('CLIENT_ID length:', import.meta.env.VITE_GOOGLE_CLIENT_ID?.length);
+    console.log('CLIENT_ID starts with number:', /^\d/.test(import.meta.env.VITE_GOOGLE_CLIENT_ID || ''));
+    console.log('CLIENT_ID ends with .apps.googleusercontent.com:', import.meta.env.VITE_GOOGLE_CLIENT_ID?.endsWith('.apps.googleusercontent.com'));
+    console.log('All env vars:', import.meta.env);
+    console.log('========================');
+  }, []);
+
   const handleLogin = () => {
     if (disabled) return;
     
     try {
-    const authUrl = authService.getAuthUrl();
+      console.log('Attempting to get auth URL...');
+      const authUrl = authService.getAuthUrl();
       console.log('Redirecting to:', authUrl);
-    window.location.href = authUrl;
+      window.location.href = authUrl;
     } catch (error) {
       console.error('Login error:', error);
-      alert('Login configuration error. Please check the console.');
+      alert(`Login configuration error: ${error.message}`);
     }
   };
 

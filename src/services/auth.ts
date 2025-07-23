@@ -25,16 +25,30 @@ export class AuthService {
 
   // Generate OAuth2 authorization URL
   getAuthUrl(): string {
-    console.log('CLIENT_ID check:', { CLIENT_ID, isDefined: !!CLIENT_ID });
+    console.log('=== AUTH URL GENERATION DEBUG ===');
+    console.log('Raw CLIENT_ID from env:', CLIENT_ID);
+    console.log('CLIENT_ID type:', typeof CLIENT_ID);
+    console.log('CLIENT_ID length:', CLIENT_ID?.length);
+    console.log('CLIENT_ID is defined:', !!CLIENT_ID);
+    console.log('CLIENT_ID is not placeholder:', CLIENT_ID !== 'your_google_client_id_here');
     
-    if (!CLIENT_ID || CLIENT_ID === 'your_google_client_id_here' || CLIENT_ID === 'your_actual_google_client_id_here') {
-      console.log('Current CLIENT_ID:', CLIENT_ID);
+    if (!CLIENT_ID || 
+        CLIENT_ID === 'your_google_client_id_here' || 
+        CLIENT_ID === 'your_actual_google_client_id_here' ||
+        CLIENT_ID === 'undefined' ||
+        CLIENT_ID === 'null') {
+      console.error('CLIENT_ID validation failed:', CLIENT_ID);
       console.error('Google Client ID not configured properly');
       throw new Error('Google Client ID not configured. Please check your environment variables.');
     }
     
     const redirectUri = getRedirectUri();
-    console.log('OAuth URL generation:', { CLIENT_ID: CLIENT_ID.substring(0, 20) + '...', redirectUri });
+    console.log('OAuth URL generation:', { 
+      CLIENT_ID: CLIENT_ID.substring(0, 20) + '...', 
+      redirectUri,
+      fullClientId: CLIENT_ID
+    });
+    console.log('================================');
     
     const params = new URLSearchParams({
       client_id: CLIENT_ID,
