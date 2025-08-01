@@ -9,10 +9,20 @@ export interface ApiResponse {
 
 export const uploadFiles = async (files: File[]): Promise<ApiResponse> => {
   try {
-    // Get Google ID token for Cloud Run authentication
-    const idToken = await authService.getGoogleIdToken();
-    if (!idToken) {
-      throw new Error('Google authentication required');
+    // Check if user is authenticated
+    if (!authService.isAuthenticated()) {
+      throw new Error('Authentication required');
+    }
+
+    // Get Cloud Run-specific token from our Netlify function
+    const tokenResponse = await fetch('/.netlify/functions/get-cloud-run-token');
+    if (!tokenResponse.ok) {
+      throw new Error('Failed to get Cloud Run authentication token');
+    }
+    
+    const { token } = await tokenResponse.json();
+    if (!token) {
+      throw new Error('Invalid Cloud Run authentication token');
     }
 
     const results: Record<string, any>[] = [];
@@ -23,7 +33,7 @@ export const uploadFiles = async (files: File[]): Promise<ApiResponse> => {
       const response = await fetch('https://initial-api-545188726513.asia-south1.run.app', {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${idToken}`,
+          'Authorization': `Bearer ${token}`,
         },
         body: formData,
       });
