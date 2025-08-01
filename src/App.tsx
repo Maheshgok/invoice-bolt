@@ -23,27 +23,39 @@ const MainApp: React.FC = () => {
   const [finished, setFinished] = useState(false);
   const { isAuthenticated, user, loading, logout } = useAuth();
 
-  // Dummy extraction for now
-  const extractDummyData = (file: File) => [
-    { Field: 'Invoice Number', Value: file.name.replace(/\..+$/, '').toUpperCase() },
-    { Field: 'Date', Value: '2025-07-26' },
-    { Field: 'Amount', Value: '$100.00' },
-  ];
+
 
   const handleFilesChange = useCallback((newFiles: File[]) => {
     setFiles(newFiles);
     setError(null);
   }, []);
 
-  // Start processing: queue files
-  const handleUpload = useCallback(() => {
+
+  // Start processing: upload files to Cloud Run and queue for review
+  const handleUpload = useCallback(async () => {
     if (files.length === 0) return;
-    setFileQueue(files);
-    setCurrentFileIdx(0);
-    setPerFileData(files.map(f => extractDummyData(f)));
-    setCsvData([]);
-    setFinished(false);
-    setFiles([]);
+    setIsUploading(true);
+    setError(null);
+    try {
+      // Upload files to Cloud Run (one at a time, returns array of results)
+      const apiResponse = await uploadFiles(files);
+      if (!apiResponse.success || !apiResponse.data) {
+        throw new Error(apiResponse.message || 'Upload failed');
+      }
+      setFileQueue(files);
+      setCurrentFileIdx(0);
+      // Each file's extracted data is in apiResponse.data (array of arrays or objects)
+      // If your API returns an array of objects per file, wrap each in an array for perFileData
+      const perFile = apiResponse.data.map((d: any) => Array.isArray(d) ? d : [d]);
+      setPerFileData(perFile);
+      setCsvData([]);
+      setFinished(false);
+      setFiles([]);
+    } catch (err: any) {
+      setError(err.message || 'Upload failed');
+    } finally {
+      setIsUploading(false);
+    }
   }, [files]);
 
   // When user presses Proceed for a file

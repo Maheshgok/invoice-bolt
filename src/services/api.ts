@@ -14,27 +14,27 @@ export const uploadFiles = async (files: File[]): Promise<ApiResponse> => {
       throw new Error('Authentication required');
     }
 
-    const formData = new FormData();
-    
-    files.forEach((file, index) => {
-      formData.append(`file_${index}`, file);
-    });
+    const results: Record<string, any>[] = [];
+    for (const file of files) {
+      const formData = new FormData();
+      formData.append('file', file);
 
-    // Replace with your actual API endpoint
-    const response = await fetch('/api/upload-process', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${accessToken}`,
-      },
-      body: formData,
-    });
+      const response = await fetch('https://initial-api-545188726513.asia-south1.run.app', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+        },
+        body: formData,
+      });
 
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const result = await response.json();
+      results.push(result);
     }
-
-    const result = await response.json();
-    return result;
+    return { success: true, data: results };
   } catch (error) {
     console.error('Upload error:', error);
     
