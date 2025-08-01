@@ -123,7 +123,13 @@ export class AuthService {
       secure: true,
       sameSite: 'strict'
     });
-    
+    if (tokens.id_token) {
+      Cookies.set('id_token', tokens.id_token, { 
+        expires: tokens.expires_in / (24 * 60 * 60),
+        secure: true,
+        sameSite: 'strict'
+      });
+    }
     if (tokens.refresh_token) {
       Cookies.set('refresh_token', tokens.refresh_token, { 
         expires: 30,
@@ -131,6 +137,10 @@ export class AuthService {
         sameSite: 'strict'
       });
     }
+  }
+  // Get stored Google ID token for Cloud Run authentication
+  getGoogleIdToken(): string | null {
+    return Cookies.get('id_token') || null;
   }
 
   // Get stored access token
@@ -142,6 +152,7 @@ export class AuthService {
   clearTokens(): void {
     Cookies.remove('access_token');
     Cookies.remove('refresh_token');
+    Cookies.remove('id_token');
   }
 
   // Check if user is authenticated
