@@ -30,7 +30,7 @@ export const uploadFiles = async (files: File[]): Promise<ApiResponse> => {
       const formData = new FormData();
       formData.append('file', file);
 
-      const response = await fetch('https://initial-api-545188726513.asia-south1.run.app', {
+  const response = await fetch('/api/start', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
