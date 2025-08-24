@@ -49,17 +49,11 @@ export const uploadFiles = async (files: File[]): Promise<ApiResponse> => {
   } catch (error) {
     console.error('Upload error:', error);
     
-    // Mock response for demonstration - replace with actual API call
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        // Simulate different responses based on authentication
-        const mockData = generateMockInvoiceData();
-        resolve({
-          success: true,
-          data: mockData,
-        });
-      }, 2000);
-    });
+    // Return the actual error instead of mock data
+    return {
+      success: false,
+      message: error instanceof Error ? error.message : 'Unknown error occurred during upload'
+    };
   }
 };
 

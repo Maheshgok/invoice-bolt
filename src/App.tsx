@@ -7,6 +7,7 @@ import AuthCallback from './components/AuthCallback';
 import LoginButton from './components/LoginButton';
 import UserProfile from './components/UserProfile';
 import EnvTest from './components/EnvTest';
+import ResponseDisplay from './components/ResponseDisplay';
 import { uploadFiles, ApiResponse } from './services/api';
 import { FileText, AlertCircle, Loader2 } from 'lucide-react';
 import { useAuth } from './hooks/useAuth';
@@ -162,6 +163,12 @@ const MainApp: React.FC = () => {
             onUpload={handleUpload}
             isUploading={isUploading}
           />
+        </div>
+
+        {/* API Response Display */}
+        <div className="bg-white rounded-lg shadow-sm p-6 mb-8">
+          <h2 className="text-xl font-semibold text-gray-800 mb-4">API Status Response</h2>
+          <ResponseDisplay />
         </div>
 
         {/* File Processing Panel */}
