@@ -143,6 +143,11 @@ export class AuthService {
     return Cookies.get('id_token') || null;
   }
 
+  // Alias for getGoogleIdToken for consistency with API service
+  getIdToken(): string | null {
+    return this.getGoogleIdToken();
+  }
+
   // Get stored access token
   getAccessToken(): string | null {
     return Cookies.get('access_token') || null;

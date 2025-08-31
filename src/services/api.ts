@@ -7,54 +7,83 @@ export interface ApiResponse {
   message?: string;
 }
 
-export const uploadFiles = async (files: File[]): Promise<ApiResponse> => {
-  try {
-    // Check if user is authenticated
-    if (!authService.isAuthenticated()) {
-      throw new Error('Authentication required');
-    }
-
-    // Get Cloud Run-specific token from our Netlify function
-    const tokenResponse = await fetch('/.netlify/functions/get-cloud-run-token');
-    if (!tokenResponse.ok) {
-      throw new Error('Failed to get Cloud Run authentication token');
-    }
-    
-    const { token } = await tokenResponse.json();
-    if (!token) {
-      throw new Error('Invalid Cloud Run authentication token');
-    }
-
-    const results: Record<string, any>[] = [];
-    for (const file of files) {
-      const formData = new FormData();
-      formData.append('file', file);
-
-  const response = await fetch('/upload_invoice', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-        body: formData,
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const result = await response.json();
-      results.push(result);
-    }
-    return { success: true, data: results };
-  } catch (error) {
-    console.error('Upload error:', error);
-    
-    // Return the actual error instead of mock data
-    return {
-      success: false,
-      message: error instanceof Error ? error.message : 'Unknown error occurred during upload'
-    };
+// Get authenticated headers with Cloud Run token
+async function getAuthenticatedHeaders(additionalHeaders: Record<string, string> = {}): Promise<Headers> {
+  const headers = new Headers(additionalHeaders);
+  
+  if (!authService.isAuthenticated()) {
+    throw new Error('Authentication required');
   }
+
+  const idToken = await authService.getIdToken();
+  if (!idToken) {
+    throw new Error('No ID token available');
+  }
+
+  // Get Cloud Run token using the ID token
+  const tokenResponse = await fetch('/.netlify/functions/get-cloud-run-token', {
+    headers: {
+      'Authorization': `Bearer ${idToken}`
+    }
+  });
+  
+  if (!tokenResponse.ok) {
+    throw new Error('Failed to get Cloud Run authentication token');
+  }
+  
+  const { token } = await tokenResponse.json();
+  if (!token) {
+    throw new Error('Invalid Cloud Run authentication token');
+  }
+  
+  headers.set('Authorization', `Bearer ${token}`);
+  return headers;
+}
+
+// Upload images and get jobId from backend
+export const uploadImages = async (files: File[]): Promise<{ jobId: string }> => {
+  // Get authenticated headers
+  const headers = await getAuthenticatedHeaders();
+  
+  // Prepare form data (multiple images)
+  const formData = new FormData();
+  files.forEach((file, idx) => {
+    formData.append('file', file);
+  });
+  
+  // Send to backend
+  const response = await fetch('/upload_invoice', {
+    method: 'POST',
+    headers: headers,
+    body: formData,
+  });
+  
+  if (!response.ok) {
+    throw new Error(`HTTP error! status: ${response.status}`);
+  }
+  
+  const result = await response.json();
+  if (!result.jobId) {
+    throw new Error('No jobId returned from backend');
+  }
+  
+  return { jobId: result.jobId };
+};
+
+// Poll backend for job status/result
+export const getJobStatus = async (jobId: string): Promise<{ status: string; result?: any }> => {
+  // Get authenticated headers
+  const headers = await getAuthenticatedHeaders();
+  
+  const response = await fetch(`/api/status?jobId=${encodeURIComponent(jobId)}`, {
+    headers: headers
+  });
+  
+  if (!response.ok) {
+    throw new Error('Failed to get job status');
+  }
+  
+  return response.json();
 };
 
 // Mock invoice data generator for demonstration
