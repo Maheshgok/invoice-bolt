@@ -12,35 +12,59 @@ export interface ApiResponse {
 
 // Get authenticated headers with Cloud Run token
 async function getAuthenticatedHeaders(additionalHeaders: Record<string, string> = {}): Promise<Headers> {
+  console.log('=== Getting Authenticated Headers ===');
   const headers = new Headers(additionalHeaders);
   
-  if (!authService.isAuthenticated()) {
+  // Check authentication
+  const isAuthenticated = authService.isAuthenticated();
+  console.log('Is authenticated:', isAuthenticated);
+  if (!isAuthenticated) {
+    console.error('Authentication required but user is not authenticated');
     throw new Error('Authentication required');
   }
 
+  // Get ID token
+  console.log('Getting ID token...');
   const idToken = await authService.getIdToken();
+  console.log('ID token available:', !!idToken, idToken ? `(length: ${idToken.length})` : '');
   if (!idToken) {
+    console.error('No ID token available');
     throw new Error('No ID token available');
   }
 
-  // Get Cloud Run token using the ID token
-  const tokenResponse = await fetch('/.netlify/functions/get-cloud-run-token', {
-    headers: {
-      'Authorization': `Bearer ${idToken}`
+  try {
+    // Get Cloud Run token using the ID token
+    console.log('Fetching Cloud Run token...');
+    const tokenResponse = await fetch('/.netlify/functions/get-cloud-run-token', {
+      headers: {
+        'Authorization': `Bearer ${idToken}`
+      }
+    });
+    
+    console.log('Token response status:', tokenResponse.status);
+    
+    if (!tokenResponse.ok) {
+      const errorText = await tokenResponse.text();
+      console.error('Failed to get Cloud Run token. Status:', tokenResponse.status, 'Response:', errorText);
+      throw new Error(`Failed to get Cloud Run authentication token: ${tokenResponse.status} ${errorText}`);
     }
-  });
-  
-  if (!tokenResponse.ok) {
-    throw new Error('Failed to get Cloud Run authentication token');
+    
+    const responseData = await tokenResponse.json();
+    console.log('Token response data available:', !!responseData);
+    
+    if (!responseData.token) {
+      console.error('Invalid Cloud Run token response:', responseData);
+      throw new Error('Invalid Cloud Run authentication token');
+    }
+    
+    console.log('Cloud Run token obtained successfully (length:', responseData.token.length, ')');
+    headers.set('Authorization', `Bearer ${responseData.token}`);
+    console.log('=== Authenticated Headers Ready ===');
+    return headers;
+  } catch (error) {
+    console.error('Error getting authenticated headers:', error);
+    throw error;
   }
-  
-  const { token } = await tokenResponse.json();
-  if (!token) {
-    throw new Error('Invalid Cloud Run authentication token');
-  }
-  
-  headers.set('Authorization', `Bearer ${token}`);
-  return headers;
 }
 
 // Upload images and get jobId from backend

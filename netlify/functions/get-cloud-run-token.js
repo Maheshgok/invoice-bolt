@@ -68,12 +68,22 @@ exports.handler = async (event, context) => {
       };
     }
 
+    console.log('Creating GoogleAuth instance...');
     // Create a new GoogleAuth instance
     const auth = new GoogleAuth();
+    console.log('GoogleAuth instance created successfully');
+
+    // Log the Cloud Run URL
+    console.log('Cloud Run URL:', CLOUD_RUN_URL);
 
     // Get the ID token with the correct audience
+    console.log('Getting ID token client for Cloud Run...');
     const cloudRunClient = await auth.getIdTokenClient(CLOUD_RUN_URL);
+    console.log('ID token client obtained successfully');
+    
+    console.log('Requesting token from ID token provider...');
     const cloudRunToken = await cloudRunClient.idTokenProvider.getToken();
+    console.log('Token obtained successfully, token length:', cloudRunToken.token.length);
 
     return {
       statusCode: 200,
@@ -82,12 +92,24 @@ exports.handler = async (event, context) => {
     };
   } catch (error) {
     console.error('Error generating Cloud Run token:', error);
+    console.error('Error stack:', error.stack);
+    
+    // Log more details about the error
+    const errorDetails = {
+      message: error.message,
+      name: error.name,
+      stack: error.stack?.split('\n').slice(0, 3).join('\n') || 'No stack trace',
+      code: error.code,
+      cause: error.cause ? JSON.stringify(error.cause) : undefined
+    };
+    
     return {
       statusCode: 500,
       headers,
       body: JSON.stringify({
         error: 'Failed to generate token for Cloud Run',
-        details: error.message
+        details: error.message,
+        errorInfo: errorDetails
       }),
     };
   }
