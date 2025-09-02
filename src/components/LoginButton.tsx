@@ -1,5 +1,5 @@
 import React from 'react';
-import { LogIn } from 'lucide-react';
+import { LogIn, AlertCircle } from 'lucide-react';
 import { authService } from '../services/auth';
 
 interface LoginButtonProps {
@@ -8,6 +8,8 @@ interface LoginButtonProps {
 }
 
 const LoginButton: React.FC<LoginButtonProps> = ({ className = '', disabled = false }) => {
+  const [configError, setConfigError] = useState<string | null>(null);
+  
   // Debug environment variables
   React.useEffect(() => {
     console.log('=== DETAILED ENVIRONMENT DEBUG ===');
@@ -22,10 +24,21 @@ const LoginButton: React.FC<LoginButtonProps> = ({ className = '', disabled = fa
     console.log('All available env vars:', Object.keys(import.meta.env));
     console.log('Full env object:', import.meta.env);
     console.log('==================================');
+    
+    // Check for configuration errors
+    const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+    if (!clientId || 
+        clientId === 'your_google_client_id_here' || 
+        clientId === 'your_actual_google_client_id_here' ||
+        !clientId.includes('.apps.googleusercontent.com')) {
+      setConfigError('Google Client ID not properly configured');
+    } else {
+      setConfigError(null);
+    }
   }, []);
 
   const handleLogin = () => {
-    if (disabled) return;
+    if (disabled || configError) return;
     
     try {
       console.log('Attempting to get auth URL...');
@@ -37,6 +50,15 @@ const LoginButton: React.FC<LoginButtonProps> = ({ className = '', disabled = fa
       alert(`Login configuration error: ${error.message}`);
     }
   };
+
+  if (configError) {
+    return (
+      <div className={`flex items-center gap-2 bg-red-100 text-red-800 px-6 py-2 rounded-md ${className}`}>
+        <AlertCircle className="w-4 h-4" />
+        Configuration Required
+      </div>
+    );
+  }
 
   return (
     <button

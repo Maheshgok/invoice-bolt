@@ -33,14 +33,20 @@ export class AuthService {
     console.log('CLIENT_ID is defined:', !!CLIENT_ID);
     console.log('CLIENT_ID is not placeholder:', CLIENT_ID !== 'your_google_client_id_here');
     
-    if (!CLIENT_ID || 
-        CLIENT_ID === 'your_google_client_id_here' || 
-        CLIENT_ID === 'your_actual_google_client_id_here' ||
-        CLIENT_ID === 'undefined' ||
-        CLIENT_ID === 'null') {
+    // Validate CLIENT_ID more thoroughly
+    const isValidClientId = CLIENT_ID && 
+      CLIENT_ID !== 'your_google_client_id_here' && 
+      CLIENT_ID !== 'your_actual_google_client_id_here' &&
+      CLIENT_ID !== 'undefined' &&
+      CLIENT_ID !== 'null' &&
+      CLIENT_ID.includes('.apps.googleusercontent.com');
+    
+    if (!isValidClientId) {
       console.error('CLIENT_ID validation failed:', CLIENT_ID);
-      console.error('Google Client ID not configured properly');
-      throw new Error('Google Client ID not configured. Please check your environment variables.');
+      const errorMessage = !CLIENT_ID 
+        ? 'Google Client ID is missing. Please configure VITE_GOOGLE_CLIENT_ID in your environment variables.'
+        : 'Google Client ID appears to be a placeholder or invalid. Please set a valid Client ID from Google Cloud Console.';
+      throw new Error(errorMessage);
     }
     
     const redirectUri = getRedirectUri();
