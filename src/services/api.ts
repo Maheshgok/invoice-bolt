@@ -1,6 +1,9 @@
 // API service for file upload and processing
 import { authService } from './auth';
 
+// Cloud Run service URL
+const CLOUD_RUN_URL = 'https://initial-api-545188726513.asia-south1.run.app';
+
 export interface ApiResponse {
   success: boolean;
   data?: Record<string, any>[];
@@ -52,7 +55,7 @@ export const uploadImages = async (files: File[]): Promise<{ jobId: string }> =>
   });
   
   // Send to backend
-  const response = await fetch('/upload_invoice', {
+  const response = await fetch(`${CLOUD_RUN_URL}/upload_invoice`, {
     method: 'POST',
     headers: headers,
     body: formData,
@@ -75,7 +78,7 @@ export const getJobStatus = async (jobId: string): Promise<{ status: string; res
   // Get authenticated headers
   const headers = await getAuthenticatedHeaders();
   
-  const response = await fetch(`/api/status?jobId=${encodeURIComponent(jobId)}`, {
+  const response = await fetch(`/.netlify/functions/api-status?jobId=${encodeURIComponent(jobId)}`, {
     headers: headers
   });
   

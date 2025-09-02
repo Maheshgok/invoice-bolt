@@ -4,6 +4,9 @@ const { OAuth2Client } = require('google-auth-library');
 // Google OAuth client ID from environment variable
 const CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
 
+// Cloud Run service URL - keep in sync with src/services/api.ts
+const CLOUD_RUN_URL = 'https://initial-api-545188726513.asia-south1.run.app';
+
 exports.handler = async (event, context) => {
   // CORS headers
   const headers = {
@@ -65,14 +68,11 @@ exports.handler = async (event, context) => {
       };
     }
 
-    // Cloud Run service URL
-    const cloudRunUrl = 'https://initial-api-545188726513.asia-south1.run.app';
-
     // Create a new GoogleAuth instance
     const auth = new GoogleAuth();
 
     // Get the ID token with the correct audience
-    const cloudRunClient = await auth.getIdTokenClient(cloudRunUrl);
+    const cloudRunClient = await auth.getIdTokenClient(CLOUD_RUN_URL);
     const cloudRunToken = await cloudRunClient.idTokenProvider.getToken();
 
     return {
