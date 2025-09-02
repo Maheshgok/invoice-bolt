@@ -33,8 +33,9 @@ exports.handler = async function(event, context) {
       };
     }
 
-    // Extract the token from the Authorization header
-    const token = authHeader.split(' ')[1];
+    // Extract the ID token from the Authorization header
+    const idToken = authHeader.split(' ')[1];
+    console.log('ID token received, length:', idToken.length);
     
     // Get the jobId from query parameters if provided
     const params = event.queryStringParameters || {};
@@ -44,14 +45,16 @@ exports.handler = async function(event, context) {
       ? `/api/status?jobId=${encodeURIComponent(jobId)}`
       : '/api/status';
     
-    // Forward the request to Cloud Run with the token
+    // Forward the request to Cloud Run with the ID token
+    console.log('Forwarding request to Cloud Run:', `${CLOUD_RUN_URL}${endpoint}`);
     const response = await fetch(`${CLOUD_RUN_URL}${endpoint}`, {
       method: 'GET',
       headers: {
-        'Authorization': `Bearer ${token}`,
+        'Authorization': `Bearer ${idToken}`,
         'Content-Type': 'application/json'
       }
     });
+    console.log('Cloud Run response status:', response.status);
     
     // Get the response data
     const responseData = await response.json();

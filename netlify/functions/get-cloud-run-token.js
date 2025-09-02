@@ -68,28 +68,18 @@ exports.handler = async (event, context) => {
       };
     }
 
-    console.log('Creating GoogleAuth instance...');
-    // Create a new GoogleAuth instance
-    const auth = new GoogleAuth();
-    console.log('GoogleAuth instance created successfully');
-
-    // Log the Cloud Run URL
-    console.log('Cloud Run URL:', CLOUD_RUN_URL);
-
-    // Get the ID token with the correct audience
-    console.log('Getting ID token client for Cloud Run...');
-    const cloudRunClient = await auth.getIdTokenClient(CLOUD_RUN_URL);
-    console.log('ID token client obtained successfully');
+    // Since we already have a verified ID token from Google, we can use it directly
+    // instead of trying to generate a new one with GoogleAuth
+    console.log('Using the verified ID token directly for Cloud Run authentication');
     
-    console.log('Requesting token from ID token provider...');
-    const cloudRunToken = await cloudRunClient.idTokenProvider.getToken();
-    console.log('Token obtained successfully, token length:', cloudRunToken.token.length);
-
+    // Return the verified ID token to be used for Cloud Run authentication
     return {
       statusCode: 200,
       headers,
-      body: JSON.stringify({ token: cloudRunToken.token }),
+      body: JSON.stringify({ token: idToken }),
     };
+
+    // This return statement is now handled in the code above
   } catch (error) {
     console.error('Error generating Cloud Run token:', error);
     console.error('Error stack:', error.stack);
