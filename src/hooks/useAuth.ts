@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { User, AuthState } from '../types/auth';
 import { authService } from '../services/auth';
+import { tokenStorage } from '../services/tokenStorage';
 
 export const useAuth = (): AuthState & {
   login: () => void;
@@ -97,6 +98,7 @@ export const useAuth = (): AuthState & {
 
   const logout = () => {
     authService.clearTokens();
+    tokenStorage.clearStoredTokens();
     localStorage.removeItem('user');
     setAuthState({
       isAuthenticated: false,

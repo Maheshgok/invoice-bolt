@@ -29,6 +29,14 @@ const AuthCallback: React.FC = () => {
         // Store tokens
         authService.storeTokens(tokens);
 
+        // Log token capture success
+        console.log('=== TOKEN CAPTURE SUCCESS ===');
+        console.log('Tokens successfully captured and stored');
+        console.log('Access token available:', !!tokens.access_token);
+        console.log('ID token available:', !!tokens.id_token);
+        console.log('Refresh token available:', !!tokens.refresh_token);
+        console.log('============================');
+
         // Get user profile
         const user = await authService.getUserProfile(tokens.access_token);
         

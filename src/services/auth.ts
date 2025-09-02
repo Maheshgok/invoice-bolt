@@ -1,5 +1,6 @@
 import Cookies from 'js-cookie';
 import { User, GoogleAuthResponse } from '../types/auth';
+import { tokenStorage } from './tokenStorage';
 
 const CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID;
 const SCOPES = 'openid email profile';
@@ -118,6 +119,10 @@ export class AuthService {
 
   // Store tokens securely
   storeTokens(tokens: GoogleAuthResponse): void {
+    // Store in new token storage service
+    tokenStorage.storeTokens(tokens);
+    
+    // Keep existing cookie storage for backward compatibility
     Cookies.set('access_token', tokens.access_token, { 
       expires: tokens.expires_in / (24 * 60 * 60),
       secure: true,
@@ -138,9 +143,11 @@ export class AuthService {
       });
     }
   }
+
   // Get stored Google ID token for Cloud Run authentication
   getGoogleIdToken(): string | null {
-    return Cookies.get('id_token') || null;
+    // Try new storage first, fallback to cookies
+    return tokenStorage.getIdToken() || Cookies.get('id_token') || null;
   }
 
   // Alias for getGoogleIdToken for consistency with API service
@@ -150,11 +157,16 @@ export class AuthService {
 
   // Get stored access token
   getAccessToken(): string | null {
-    return Cookies.get('access_token') || null;
+    // Try new storage first, fallback to cookies
+    return tokenStorage.getAccessToken() || Cookies.get('access_token') || null;
   }
 
   // Clear stored tokens
   clearTokens(): void {
+    // Clear from new storage
+    tokenStorage.clearStoredTokens();
+    
+    // Clear cookies
     Cookies.remove('access_token');
     Cookies.remove('refresh_token');
     Cookies.remove('id_token');
@@ -162,12 +174,13 @@ export class AuthService {
 
   // Check if user is authenticated
   isAuthenticated(): boolean {
-    return !!this.getAccessToken();
+    // Check new storage first, fallback to cookies
+    return tokenStorage.isTokenValid() || !!this.getAccessToken();
   }
 
   // Refresh access token
   async refreshToken(): Promise<GoogleAuthResponse> {
-    const refreshToken = Cookies.get('refresh_token');
+    const refreshToken = tokenStorage.getRefreshToken() || Cookies.get('refresh_token');
     if (!refreshToken) {
       throw new Error('No refresh token available');
     }
@@ -189,6 +202,11 @@ export class AuthService {
     const tokens = await response.json();
     this.storeTokens(tokens);
     return tokens;
+  }
+
+  // Get comprehensive token information
+  getTokenInfo(): any {
+    return tokenStorage.getTokenInfo();
   }
 }
 

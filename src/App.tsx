@@ -8,6 +8,7 @@ import UserProfile from './components/UserProfile';
 import EnvTest from './components/EnvTest';
 import JobStatusPanel from './components/JobStatusPanel';
 import AuthGuard from './components/AuthGuard';
+import TokenDebugPanel from './components/TokenDebugPanel';
 import { uploadImages, getJobStatus } from './services/api';
 import { FileText, AlertCircle, Loader2 } from 'lucide-react';
 import { useAuth } from './hooks/useAuth';
@@ -179,6 +180,13 @@ const MainApp: React.FC = (): React.ReactNode => {
               isLoading={false}
               onDownloadCSV={handleDownload}
             />
+          </div>
+        )}
+
+        {/* Token Debug Panel - only show when authenticated */}
+        {user && (
+          <div className="mt-8">
+            <TokenDebugPanel />
           </div>
         )}
 
