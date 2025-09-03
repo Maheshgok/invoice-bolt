@@ -67,16 +67,14 @@ async function getAuthenticatedHeaders(additionalHeaders: Record<string, string>
   }
 }
 
-// Upload images and get jobId from backend
-export const uploadImages = async (files: File[]): Promise<{ jobId: string }> => {
+// Upload invoice and get backend_request_id from backend
+export const uploadInvoice = async (file: File): Promise<{ backend_request_id: string }> => {
   // Get authenticated headers
   const headers = await getAuthenticatedHeaders();
   
-  // Prepare form data (multiple images)
+  // Prepare form data
   const formData = new FormData();
-  files.forEach((file, idx) => {
-    formData.append('file', file);
-  });
+  formData.append('invoice_file', file);
   
   // Send to backend
   const response = await fetch(`${CLOUD_RUN_URL}/upload_invoice`, {
@@ -86,15 +84,16 @@ export const uploadImages = async (files: File[]): Promise<{ jobId: string }> =>
   });
   
   if (!response.ok) {
-    throw new Error(`HTTP error! status: ${response.status}`);
+    const errorText = await response.text();
+    throw new Error(`HTTP error! status: ${response.status}, body: ${errorText}`);
   }
   
   const result = await response.json();
-  if (!result.jobId) {
-    throw new Error('No jobId returned from backend');
+  if (!result.backend_request_id) {
+    throw new Error('No backend_request_id returned from backend');
   }
   
-  return { jobId: result.jobId };
+  return { backend_request_id: result.backend_request_id };
 };
 
 // Poll backend for job status/result
@@ -102,7 +101,7 @@ export const getJobStatus = async (jobId: string): Promise<{ status: string; res
   // Get authenticated headers
   const headers = await getAuthenticatedHeaders();
   
-  const response = await fetch(`/.netlify/functions/api-status?jobId=${encodeURIComponent(jobId)}`, {
+  const response = await fetch(`${CLOUD_RUN_URL}/status/${jobId}`, {
     headers: headers
   });
   

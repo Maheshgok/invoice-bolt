@@ -9,7 +9,7 @@ import EnvTest from './components/EnvTest';
 import JobStatusPanel from './components/JobStatusPanel';
 import AuthGuard from './components/AuthGuard';
 import TokenDebugPanel from './components/TokenDebugPanel';
-import { uploadImages, getJobStatus } from './services/api';
+import { uploadInvoice, getJobStatus } from './services/api';
 import { FileText, AlertCircle, Loader2 } from 'lucide-react';
 import { useAuth } from './hooks/useAuth';
 
@@ -17,7 +17,7 @@ import { useAuth } from './hooks/useAuth';
 const MainApp: React.FC = (): React.ReactNode => {
   const [files, setFiles] = useState<File[]>([]);
   const [jobStatus, setJobStatus] = useState<'idle' | 'pending' | 'completed' | 'failed'>('idle');
-  const [result, setResult] = useState<any>(null);
+  const [result, setResult] = useState<Record<string, any>[] | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { isAuthenticated, user, loading, logout } = useAuth();
@@ -39,11 +39,11 @@ const MainApp: React.FC = (): React.ReactNode => {
     setJobStatus('idle');
     setResult(null);
     try {
-      const { jobId } = await uploadImages(files);
-      if (!jobId) throw new Error('No jobId received');
+      const { backend_request_id } = await uploadInvoice(files[0]);
+      if (!backend_request_id) throw new Error('No backend_request_id received');
       setJobStatus('pending');
       // Start polling for job status
-      pollJobStatus(jobId);
+      pollJobStatus(backend_request_id);
       setFiles([]);
     } catch (err: any) {
       setError(err.message || 'Upload failed');
@@ -54,16 +54,22 @@ const MainApp: React.FC = (): React.ReactNode => {
   }, [files]);
 
   // Poll job status
-  const pollJobStatus = useCallback((jobId: string) => {
+  const pollJobStatus = useCallback((backend_request_id: string) => {
     let attempts = 0;
     const maxAttempts = 30; // ~60 seconds if interval is 2s
     const interval = 2000;
     const poll = async () => {
       try {
-        const resp = await getJobStatus(jobId);
+        const resp = await getJobStatus(backend_request_id);
         if (resp.status === 'completed') {
           setJobStatus('completed');
-          setResult(resp.result);
+          if (Array.isArray(resp.result)) {
+            setResult(resp.result);
+          } else if (resp.result) {
+            setResult([resp.result]);
+          } else {
+            setResult([]);
+          }
         } else if (resp.status === 'failed') {
           setJobStatus('failed');
           setError('Job failed');
