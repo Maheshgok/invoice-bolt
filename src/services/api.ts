@@ -69,31 +69,57 @@ async function getAuthenticatedHeaders(additionalHeaders: Record<string, string>
 
 // Upload invoice and get backend_request_id from backend
 export const uploadInvoice = async (file: File): Promise<{ backend_request_id: string }> => {
-  // Get authenticated headers
-  const headers = await getAuthenticatedHeaders();
+  console.log('=== UPLOAD INVOICE DEBUG ===');
+  console.log('File name:', file.name);
+  console.log('File size:', file.size);
+  console.log('File type:', file.type);
   
-  // Prepare form data
-  const formData = new FormData();
-  formData.append('invoice_file', file);
-  
-  // Send to backend
-  const response = await fetch(`${CLOUD_RUN_URL}/upload_invoice`, {
-    method: 'POST',
-    headers: headers,
-    body: formData,
-  });
-  
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`HTTP error! status: ${response.status}, body: ${errorText}`);
+  let response;
+  try {
+    // Get authenticated headers but don't include Content-Type
+    const headers = await getAuthenticatedHeaders();
+    
+    // Remove Content-Type header if present (let browser set it with boundary)
+    headers.delete('Content-Type');
+    console.log('Headers after Content-Type removal:', Array.from(headers.entries()));
+    
+    // Prepare form data
+    const formData = new FormData();
+    formData.append('invoice_file', file);
+    console.log('FormData created with invoice_file appended');
+    
+    // Log the endpoint we're calling
+    console.log('Calling endpoint:', `${CLOUD_RUN_URL}/upload_invoice`);
+    
+    // Send to backend
+    response = await fetch(`${CLOUD_RUN_URL}/upload_invoice`, {
+      method: 'POST',
+      headers: headers,
+      body: formData,
+    });
+    
+    console.log('Response status:', response.status);
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('Upload error:', errorText);
+      throw new Error(`HTTP error! status: ${response.status}, body: ${errorText}`);
+    }
+    
+    const result = await response.json();
+    console.log('Response data:', result);
+    
+    if (!result.backend_request_id) {
+      console.error('No backend_request_id in response:', result);
+      throw new Error('No backend_request_id returned from backend');
+    }
+    
+    console.log('Upload successful with backend_request_id:', result.backend_request_id);
+    return { backend_request_id: result.backend_request_id };
+  } catch (error) {
+    console.error('Upload error:', error);
+    throw error;
   }
-  
-  const result = await response.json();
-  if (!result.backend_request_id) {
-    throw new Error('No backend_request_id returned from backend');
-  }
-  
-  return { backend_request_id: result.backend_request_id };
 };
 
 // Poll backend for job status/result
