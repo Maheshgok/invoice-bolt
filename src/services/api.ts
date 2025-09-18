@@ -83,98 +83,38 @@ export const uploadInvoice = async (file: File): Promise<{ backend_request_id: s
     headers.delete('Content-Type');
     console.log('Headers after Content-Type removal:', Array.from(headers.entries()));
     
-    // Prepare form data with multiple field names to test
+    // Prepare form data
     const formData = new FormData();
+    formData.append('invoice_file', file);
+    console.log('FormData created with invoice_file field');
     
-    // Try different field names that the backend might expect
-    const fieldNames = ['invoice_file', 'file', 'upload', 'document'];
-    const fieldName = 'invoice_file'; // Start with this one
-    
-    formData.append(fieldName, file);
-    console.log(`FormData created with field name: ${fieldName}`);
-    
-    // Also try adding the file with multiple field names for debugging
-    // This helps us understand what the backend expects
-    console.log('Adding file with additional field names for debugging:');
-    fieldNames.forEach(name => {
-      if (name !== fieldName) {
-        formData.append(name, file);
-        console.log(`  Also added as: ${name}`);
-      }
-    });
-    
-    // Debug FormData contents
-    console.log('=== FormData Debug ===');
-    for (let [key, value] of formData.entries()) {
-      if (value instanceof File) {
-        console.log(`FormData key: ${key}, File name: ${value.name}, Size: ${value.size}, Type: ${value.type}`);
-      } else {
-        console.log(`FormData key: ${key}, Value: ${value}`);
-      }
-    }
-    
-    // Debug headers being sent
-    console.log('=== Request Headers Debug ===');
-    console.log('All headers being sent:');
-    for (let [key, value] of headers.entries()) {
-      console.log(`  ${key}: ${value}`);
-    }
-    
-    // Log the endpoint we're calling
+    // Send to backend
     console.log('Calling endpoint:', `${CLOUD_RUN_URL}/upload_invoice`);
-    
-    // Create request options for debugging
-    const requestOptions = {
+    response = await fetch(`${CLOUD_RUN_URL}/upload_invoice`, {
       method: 'POST',
       headers: headers,
       body: formData,
-    };
-    
-    console.log('=== Request Options Debug ===');
-    console.log('Method:', requestOptions.method);
-    console.log('Body type:', requestOptions.body.constructor.name);
-    console.log('Body size (if available):', requestOptions.body instanceof FormData ? 'FormData object' : 'Unknown');
-    
-    // Send to backend
-    console.log('Sending request...');
-    response = await fetch(`${CLOUD_RUN_URL}/upload_invoice`, requestOptions);
+    });
     
     console.log('Response status:', response.status);
-    console.log('Response headers:');
-    for (let [key, value] of response.headers.entries()) {
-      console.log(`  ${key}: ${value}`);
-    }
     
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('=== UPLOAD ERROR DEBUG ===');
-      console.error('Error response status:', response.status);
-      console.error('Error response statusText:', response.statusText);
-      console.error('Error response body:', errorText);
-      console.error('=== REQUEST DEBUG SUMMARY ===');
-      console.error('File details:', {
-        name: file.name,
-        size: file.size,
-        type: file.type,
-        lastModified: file.lastModified
-      });
-      console.error('FormData field name used: invoice_file');
-      console.error('Request URL:', `${CLOUD_RUN_URL}/upload_invoice`);
-      console.error('Request method: POST');
-      console.error('Headers sent:', Array.from(headers.entries()));
+      console.error('Upload failed - Status:', response.status, 'Response:', errorText);
       throw new Error(`HTTP error! status: ${response.status}, body: ${errorText}`);
     }
     
     const result = await response.json();
     console.log('Response data:', result);
     
-    if (!result.backend_request_id) {
-      console.error('No backend_request_id in response:', result);
-      throw new Error('No backend_request_id returned from backend');
+    // Backend returns 'job_id' not 'backend_request_id'
+    if (!result.job_id) {
+      console.error('No job_id in response:', result);
+      throw new Error('No job_id returned from backend');
     }
     
-    console.log('Upload successful with backend_request_id:', result.backend_request_id);
-    return { backend_request_id: result.backend_request_id };
+    console.log('Upload successful with job_id:', result.job_id);
+    return { backend_request_id: result.job_id }; // Map job_id to backend_request_id for consistency
   } catch (error) {
     console.error('Upload error:', error);
     throw error;
