@@ -88,13 +88,78 @@ export const uploadInvoice = async (file: File): Promise<{ backend_request_id: s
     formData.append('invoice_file', file);
     console.log('FormData created with invoice_file field');
     
+    // Debug FormData contents in detail
+    console.log('=== DETAILED FormData DEBUG ===');
+    console.log('FormData entries:');
+    for (let [key, value] of formData.entries()) {
+      if (value instanceof File) {
+        console.log(`  Key: "${key}" -> File:`, {
+          name: value.name,
+          size: value.size,
+          type: value.type,
+          lastModified: value.lastModified
+        });
+      } else {
+        console.log(`  Key: "${key}" -> Value:`, value);
+      }
+    }
+    
+    // Also try logging FormData object itself
+    console.log('FormData object:', formData);
+    console.log('FormData constructor:', formData.constructor.name);
+    
+    // Debug headers being sent
+    console.log('=== HEADERS BEFORE SENDING ===');
+    for (let [key, value] of headers.entries()) {
+      console.log(`  ${key}: ${value}`);
+    }
+    
+    // Check if Content-Type is being set (it should be auto-set by browser for FormData)
+    if (headers.has('Content-Type')) {
+      console.log('WARNING: Content-Type header is set, this might interfere with FormData boundary');
+      console.log('Removing Content-Type to let browser handle it...');
+      headers.delete('Content-Type');
+    }
+    
     // Send to backend
     console.log('Calling endpoint:', `${CLOUD_RUN_URL}/upload_invoice`);
+    console.log('Request details:', {
+      method: 'POST',
+      hasHeaders: headers instanceof Headers,
+      headerCount: Array.from(headers.entries()).length,
+      bodyType: formData.constructor.name
+    });
+    
+    // First try with our headers
+    console.log('=== ATTEMPTING REQUEST WITH AUTH HEADERS ===');
     response = await fetch(`${CLOUD_RUN_URL}/upload_invoice`, {
       method: 'POST',
       headers: headers,
       body: formData,
     });
+    
+    // If it fails with 400, try without custom headers as a test
+    if (response.status === 400) {
+      console.log('=== REQUEST FAILED, TRYING WITHOUT CUSTOM HEADERS FOR DEBUG ===');
+      const testFormData = new FormData();
+      testFormData.append('invoice_file', file);
+      
+      const testResponse = await fetch(`${CLOUD_RUN_URL}/upload_invoice`, {
+        method: 'POST',
+        body: testFormData, // No custom headers
+      });
+      
+      console.log('Test response status (no headers):', testResponse.status);
+      if (testResponse.status !== 400) {
+        console.log('SUCCESS WITHOUT HEADERS! The issue is likely with our headers.');
+        const testText = await testResponse.text();
+        console.log('Test response body:', testText);
+      } else {
+        console.log('Still failed without headers - issue is likely with FormData construction');
+        const testError = await testResponse.text();
+        console.log('Test error without headers:', testError);
+      }
+    }
     
     console.log('Response status:', response.status);
     
