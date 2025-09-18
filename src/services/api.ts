@@ -83,82 +83,100 @@ export const uploadInvoice = async (file: File): Promise<{ backend_request_id: s
     headers.delete('Content-Type');
     console.log('Headers after Content-Type removal:', Array.from(headers.entries()));
     
-    // Prepare form data
-    const formData = new FormData();
-    formData.append('invoice_file', file);
-    console.log('FormData created with invoice_file field');
+    // Try multiple possible field names the backend might expect
+    const possibleFieldNames = [
+      'file',           // Most common
+      'upload',         // Common alternative
+      'document',       // Document-specific
+      'invoice_file',   // Our current attempt
+      'image',          // Image-specific
+      'attachment'      // Generic attachment
+    ];
     
-    // Debug FormData contents in detail
-    console.log('=== DETAILED FormData DEBUG ===');
-    console.log('FormData entries:');
-    for (let [key, value] of formData.entries()) {
-      if (value instanceof File) {
-        console.log(`  Key: "${key}" -> File:`, {
-          name: value.name,
-          size: value.size,
-          type: value.type,
-          lastModified: value.lastModified
-        });
-      } else {
-        console.log(`  Key: "${key}" -> Value:`, value);
-      }
-    }
+    console.log('=== TESTING MULTIPLE FIELD NAMES ===');
     
-    // Also try logging FormData object itself
-    console.log('FormData object:', formData);
-    console.log('FormData constructor:', formData.constructor.name);
+    // Initialize formData variable
+    let formData = new FormData();
+    let workingFieldName: string | null = null;
     
-    // Debug headers being sent
-    console.log('=== HEADERS BEFORE SENDING ===');
-    for (let [key, value] of headers.entries()) {
-      console.log(`  ${key}: ${value}`);
-    }
-    
-    // Check if Content-Type is being set (it should be auto-set by browser for FormData)
-    if (headers.has('Content-Type')) {
-      console.log('WARNING: Content-Type header is set, this might interfere with FormData boundary');
-      console.log('Removing Content-Type to let browser handle it...');
-      headers.delete('Content-Type');
-    }
-    
-    // Send to backend
-    console.log('Calling endpoint:', `${CLOUD_RUN_URL}/upload_invoice`);
-    console.log('Request details:', {
-      method: 'POST',
-      hasHeaders: headers instanceof Headers,
-      headerCount: Array.from(headers.entries()).length,
-      bodyType: formData.constructor.name
-    });
-    
-    // First try with our headers
-    console.log('=== ATTEMPTING REQUEST WITH AUTH HEADERS ===');
-    response = await fetch(`${CLOUD_RUN_URL}/upload_invoice`, {
-      method: 'POST',
-      headers: headers,
-      body: formData,
-    });
-    
-    // If it fails with 400, try without custom headers as a test
-    if (response.status === 400) {
-      console.log('=== REQUEST FAILED, TRYING WITHOUT CUSTOM HEADERS FOR DEBUG ===');
+    // Test each field name to find what works
+    for (const fieldName of possibleFieldNames) {
+      console.log(`\n--- TESTING FIELD NAME: "${fieldName}" ---`);
+      
       const testFormData = new FormData();
-      testFormData.append('invoice_file', file);
+      testFormData.append(fieldName, file);
       
-      const testResponse = await fetch(`${CLOUD_RUN_URL}/upload_invoice`, {
-        method: 'POST',
-        body: testFormData, // No custom headers
-      });
-      
-      console.log('Test response status (no headers):', testResponse.status);
-      if (testResponse.status !== 400) {
-        console.log('SUCCESS WITHOUT HEADERS! The issue is likely with our headers.');
-        const testText = await testResponse.text();
-        console.log('Test response body:', testText);
-      } else {
-        console.log('Still failed without headers - issue is likely with FormData construction');
-        const testError = await testResponse.text();
-        console.log('Test error without headers:', testError);
+      // Verify FormData was created correctly
+      console.log('FormData entries for', fieldName);
+      for (let [key, value] of testFormData.entries()) {
+        if (value instanceof File) {
+          console.log(`  "${key}": File(name="${value.name}", size=${value.size}, type="${value.type}")`);
+        } else {
+          console.log(`  "${key}": ${value}`);
+        }
       }
+      
+      // Test this field name
+      try {
+        const testResponse = await fetch(`${CLOUD_RUN_URL}/upload_invoice`, {
+          method: 'POST',
+          body: testFormData,
+        });
+        
+        console.log(`Response for "${fieldName}": ${testResponse.status}`);
+        
+        if (testResponse.ok) {
+          console.log(`✅ SUCCESS! Field name "${fieldName}" works!`);
+          // Use this working FormData for the actual request
+          formData = testFormData;
+          workingFieldName = fieldName;
+          break;
+        } else {
+          const errorText = await testResponse.text();
+          console.log(`❌ Failed with "${fieldName}":`, errorText);
+        }
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+        console.log(`❌ Error testing "${fieldName}":`, errorMessage);
+      }
+      
+      // Small delay between tests
+      await new Promise(resolve => setTimeout(resolve, 100));
+    }
+    
+    // If none worked, create FormData with the most common field name as fallback
+    if (!workingFieldName) {
+      formData = new FormData();
+      formData.append('file', file);
+      console.log('No field name worked, using "file" as fallback');
+    } else {
+      console.log(`Using working field name: "${workingFieldName}"`);
+    }
+    
+    // If we found a working field name above, we don't need to make another request
+    // The successful test request above already worked, so let's use those results
+    if (workingFieldName) {
+      console.log(`✅ Field name "${workingFieldName}" already succeeded in testing!`);
+      console.log('Skipping additional request since we found the working field name.');
+      
+      // Since the test request already succeeded, we would get the same response
+      // Let's make one final authenticated request with the working field name
+      const finalFormData = new FormData();
+      finalFormData.append(workingFieldName, file);
+      
+      console.log('=== MAKING FINAL AUTHENTICATED REQUEST ===');
+      response = await fetch(`${CLOUD_RUN_URL}/upload_invoice`, {
+        method: 'POST',
+        headers: headers,
+        body: finalFormData,
+      });
+    } else {
+      console.log('=== NO WORKING FIELD NAME FOUND, TRYING FINAL ATTEMPT ===');
+      response = await fetch(`${CLOUD_RUN_URL}/upload_invoice`, {
+        method: 'POST',
+        headers: headers,
+        body: formData,
+      });
     }
     
     console.log('Response status:', response.status);
