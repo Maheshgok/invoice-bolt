@@ -53,15 +53,27 @@ const MainApp: React.FC = (): React.ReactNode => {
     }
   }, [files]);
 
-  // Poll job status
+  // Poll job status with extended timeout for OCR/AI processing
   const pollJobStatus = useCallback((backend_request_id: string) => {
     let attempts = 0;
-    const maxAttempts = 30; // ~60 seconds if interval is 2s
-    const interval = 2000;
+    const maxAttempts = 120; // 5 minutes total (120 * 2.5s = 300 seconds)
+    const interval = 2500; // 2.5 seconds between polls
+    
+    console.log(`🔄 Starting job polling for ID: ${backend_request_id}`);
+    console.log(`⏱️ Will poll every ${interval/1000}s for up to ${(maxAttempts * interval)/1000/60} minutes`);
+    
     const poll = async () => {
+      attempts++;
+      const elapsedTime = (attempts * interval) / 1000;
+      
       try {
+        console.log(`📡 Polling attempt ${attempts}/${maxAttempts} (${elapsedTime}s elapsed)`);
+        
         const resp = await getJobStatus(backend_request_id);
+        console.log(`📊 Job status response:`, resp);
+        
         if (resp.status === 'completed') {
+          console.log('✅ Job completed successfully!');
           setJobStatus('completed');
           if (Array.isArray(resp.result)) {
             setResult(resp.result);
@@ -71,10 +83,20 @@ const MainApp: React.FC = (): React.ReactNode => {
             setResult([]);
           }
         } else if (resp.status === 'failed') {
+          console.log('❌ Job failed on backend');
           setJobStatus('failed');
-          setError('Job failed');
+          setError('Job failed on backend');
+        } else if (resp.status === 'processing' || resp.status === 'pending' || resp.status === 'running') {
+          console.log(`⏳ Job still ${resp.status}, continuing to poll...`);
+          if (attempts < maxAttempts) {
+            setTimeout(poll, interval);
+          } else {
+            console.log('⏰ Job polling timed out after', (maxAttempts * interval)/1000, 'seconds');
+            setJobStatus('failed');
+            setError(`Job processing timed out after ${Math.round((maxAttempts * interval)/1000/60)} minutes. The backend may still be processing.`);
+          }
         } else {
-          attempts++;
+          console.log(`❓ Unknown job status: ${resp.status}, continuing to poll...`);
           if (attempts < maxAttempts) {
             setTimeout(poll, interval);
           } else {
@@ -83,10 +105,13 @@ const MainApp: React.FC = (): React.ReactNode => {
           }
         }
       } catch (err) {
+        console.error('❌ Error polling job status:', err);
         setJobStatus('failed');
-        setError('Error polling job status');
+        setError(`Error polling job status: ${err instanceof Error ? err.message : 'Unknown error'}`);
       }
     };
+    
+    // Start polling immediately
     poll();
   }, []);
 
