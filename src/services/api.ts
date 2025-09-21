@@ -67,54 +67,123 @@ async function getAuthenticatedHeaders(additionalHeaders: Record<string, string>
   }
 }
 
-// Upload invoice and get backend_request_id from backend
-export const uploadInvoice = async (file: File): Promise<{ backend_request_id: string }> => {
-  console.log('=== UPLOAD INVOICE DEBUG ===');
-  console.log('File name:', file.name);
-  console.log('File size:', file.size);
-  console.log('File type:', file.type);
+// Request a signed URL for direct upload to Google Cloud Storage
+export const getSignedUrl = async (fileName: string, fileType: string): Promise<{
+  signedUrl: string;
+  requestId: string;
+  fileName: string;
+  bucketPath: string;
+}> => {
+  console.log('=== REQUESTING SIGNED URL ===');
+  console.log('File name:', fileName);
+  console.log('File type:', fileType);
   
-  let response;
   try {
-    // Get authenticated headers but don't include Content-Type
-    const headers = await getAuthenticatedHeaders();
-    
-    // Remove Content-Type header if present (let browser set it with boundary)
-    headers.delete('Content-Type');
-    console.log('Headers after Content-Type removal:', Array.from(headers.entries()));
-    
-    // Based on testing, backend expects 'file' field name
-    const formData = new FormData();
-    formData.append('file', file);
-    console.log('FormData created with "file" field name');
-    
-    // Send authenticated request with the known working field name
-    console.log('=== SENDING AUTHENTICATED REQUEST ===');
-    response = await fetch(`${CLOUD_RUN_URL}/upload_invoice`, {
-      method: 'POST',
-      headers: headers,
-      body: formData,
+    // Get authenticated headers
+    const headers = await getAuthenticatedHeaders({
+      'Content-Type': 'application/json'
     });
     
-    console.log('Response status:', response.status);
+    const requestBody = {
+      fileName: fileName,
+      fileType: fileType
+    };
+    
+    console.log('Requesting signed URL from:', `${CLOUD_RUN_URL}/get_signed_url`);
+    console.log('Request body:', requestBody);
+    
+    const response = await fetch(`${CLOUD_RUN_URL}/get_signed_url`, {
+      method: 'POST',
+      headers: headers,
+      body: JSON.stringify(requestBody)
+    });
+    
+    console.log('Signed URL response status:', response.status);
     
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('Upload failed - Status:', response.status, 'Response:', errorText);
+      console.error('Failed to get signed URL - Status:', response.status, 'Response:', errorText);
       throw new Error(`HTTP error! status: ${response.status}, body: ${errorText}`);
     }
     
     const result = await response.json();
-    console.log('Response data:', result);
+    console.log('Signed URL response:', result);
     
-    // Backend returns 'job_id' not 'backend_request_id'
-    if (!result.job_id) {
-      console.error('No job_id in response:', result);
-      throw new Error('No job_id returned from backend');
+    if (!result.signedUrl || !result.requestId) {
+      console.error('Invalid signed URL response:', result);
+      throw new Error('Invalid signed URL response - missing signedUrl or requestId');
     }
     
-    console.log('Upload successful with job_id:', result.job_id);
-    return { backend_request_id: result.job_id }; // Map job_id to backend_request_id for consistency
+    return {
+      signedUrl: result.signedUrl,
+      requestId: result.requestId,
+      fileName: result.fileName || fileName,
+      bucketPath: result.bucketPath || ''
+    };
+  } catch (error) {
+    console.error('Error getting signed URL:', error);
+    throw error;
+  }
+};
+
+// Upload file directly to Google Cloud Storage using signed URL
+export const uploadToGCS = async (file: File, signedUrl: string): Promise<void> => {
+  console.log('=== UPLOADING TO GOOGLE CLOUD STORAGE ===');
+  console.log('File name:', file.name);
+  console.log('File size:', file.size);
+  console.log('Signed URL:', signedUrl.substring(0, 100) + '...');
+  
+  try {
+    const response = await fetch(signedUrl, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': file.type
+      },
+      body: file
+    });
+    
+    console.log('GCS upload response status:', response.status);
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('GCS upload failed - Status:', response.status, 'Response:', errorText);
+      throw new Error(`GCS upload failed! status: ${response.status}, body: ${errorText}`);
+    }
+    
+    console.log('✅ File uploaded successfully to GCS');
+  } catch (error) {
+    console.error('Error uploading to GCS:', error);
+    throw error;
+  }
+};
+
+// Modified upload invoice function using signed URL flow
+export const uploadInvoice = async (file: File): Promise<{ backend_request_id: string }> => {
+  console.log('=== UPLOAD INVOICE WITH SIGNED URL FLOW ===');
+  console.log('File name:', file.name);
+  console.log('File size:', file.size);
+  console.log('File type:', file.type);
+  
+  try {
+    // Step 1: Request signed URL from backend
+    console.log('Step 1: Requesting signed URL...');
+    const { signedUrl, requestId, fileName, bucketPath } = await getSignedUrl(file.name, file.type);
+    
+    console.log('✅ Received signed URL');
+    console.log('Request ID:', requestId);
+    console.log('File name:', fileName);
+    console.log('Bucket path:', bucketPath);
+    
+    // Step 2: Upload file directly to Google Cloud Storage
+    console.log('Step 2: Uploading to Google Cloud Storage...');
+    await uploadToGCS(file, signedUrl);
+    
+    console.log('✅ Upload completed successfully');
+    console.log('Request ID for Firestore queries:', requestId);
+    
+    // Return the request ID that can be used to query Firestore for results
+    return { backend_request_id: requestId };
+    
   } catch (error) {
     console.error('Upload error:', error);
     throw error;
