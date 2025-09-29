@@ -89,11 +89,13 @@ export const uploadInvoice = async (file: File): Promise<{ backend_request_id: s
     // The Content-Type will be set automatically by the browser for FormData
     uploadHeaders.delete('Content-Type');
     
-    const response = await fetch(`${CLOUD_RUN_URL}/invoices/upload`, {
+    const response = await fetch(`${CLOUD_RUN_URL}/upload_invoice`, {
       method: 'POST',
       headers: uploadHeaders,
       body: formData,
-      mode: 'cors'
+      mode: 'cors',
+      // Add credentials since the backend has supports_credentials=True
+      credentials: 'include'
     });
     
     if (!response.ok) {
