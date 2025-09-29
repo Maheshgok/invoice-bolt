@@ -83,14 +83,16 @@ export const uploadInvoice = async (file: File): Promise<{ backend_request_id: s
     formData.append('file', file);
     
     // Upload directly to Cloud Run
-    // Remove Content-Type header as it will be set automatically with the correct boundary for multipart/form-data
-    headers.delete('Content-Type');
+    // Set up headers for multipart/form-data
+    const uploadHeaders = new Headers(headers);
     
-    const response = await fetch(`${CLOUD_RUN_URL}/process`, {
+    // The Content-Type will be set automatically by the browser for FormData
+    uploadHeaders.delete('Content-Type');
+    
+    const response = await fetch(`${CLOUD_RUN_URL}/invoices/upload`, {
       method: 'POST',
-      headers: headers,
+      headers: uploadHeaders,
       body: formData,
-      // Add mode: 'cors' to explicitly indicate this is a CORS request
       mode: 'cors'
     });
     
