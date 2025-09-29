@@ -107,11 +107,12 @@ export const uploadInvoice = async (file: File): Promise<{ backend_request_id: s
     const result = await response.json();
     console.log('Upload response:', result);
     
-    if (!result.backend_request_id) {
-      throw new Error('Invalid response - missing backend_request_id');
+    if (!result.job_id) {
+      throw new Error('Invalid response - missing job_id');
     }
     
-    return { backend_request_id: result.backend_request_id };
+    // Map the job_id from the response to backend_request_id for consistency
+    return { backend_request_id: result.job_id };
   } catch (error) {
     console.error('Upload error:', error);
     throw error;
