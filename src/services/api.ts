@@ -67,58 +67,48 @@ async function getAuthenticatedHeaders(additionalHeaders: Record<string, string>
   }
 }
 
-// Upload invoice and get backend_request_id from backend
-export const uploadInvoice = async (file: File): Promise<{ backend_request_id: string }> => {
-  console.log('=== UPLOAD INVOICE DEBUG ===');
-  console.log('File name:', file.name);
-  console.log('File size:', file.size);
-  console.log('File type:', file.type);
+// Poll backend for job status/result
+export const getJobStatus = async (jobId: string): Promise<{ status: string; result?: any }> => {
+  // Get authenticated headers
+  const headers = await getAuthenticatedHeaders();
   
-  let response;
-  try {
-    // Get authenticated headers but don't include Content-Type
-    const headers = await getAuthenticatedHeaders();
-    
-    // Remove Content-Type header if present (let browser set it with boundary)
-    headers.delete('Content-Type');
-    console.log('Headers after Content-Type removal:', Array.from(headers.entries()));
-    
-    // Based on testing, backend expects 'file' field name
-    const formData = new FormData();
-    formData.append('file', file);
-    console.log('FormData created with "file" field name');
-    
-    // Send authenticated request with the known working field name
-    console.log('=== SENDING AUTHENTICATED REQUEST ===');
-    response = await fetch(`${CLOUD_RUN_URL}/upload_invoice`, {
-      method: 'POST',
-      headers: headers,
-      body: formData,
-    });
-    
-    console.log('Response status:', response.status);
-    
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('Upload failed - Status:', response.status, 'Response:', errorText);
-      throw new Error(`HTTP error! status: ${response.status}, body: ${errorText}`);
-    }
-    
-    const result = await response.json();
-    console.log('Response data:', result);
-    
-    // Backend returns 'job_id' not 'backend_request_id'
-    if (!result.job_id) {
-      console.error('No job_id in response:', result);
-      throw new Error('No job_id returned from backend');
-    }
-    
-    console.log('Upload successful with job_id:', result.job_id);
-    return { backend_request_id: result.job_id }; // Map job_id to backend_request_id for consistency
-  } catch (error) {
-    console.error('Upload error:', error);
-    throw error;
+  const response = await fetch(`${CLOUD_RUN_URL}/status/${jobId}`, {
+    headers: headers
+  });
+  
+  if (!response.ok) {
+    throw new Error('Failed to get job status');
   }
+  
+  return response.json();
+};
+
+// Mock invoice data generator for demonstration
+const generateMockInvoiceData = (): Record<string, any>[] => {
+  const mockData = [];
+  const vendors = ['Acme Corp', 'Tech Solutions Inc', 'Office Supplies Ltd', 'Cloud Services Co', 'Marketing Agency'];
+  const categories = ['Office Supplies', 'Software', 'Consulting', 'Hardware', 'Marketing'];
+  
+  for (let i = 1; i <= 25; i++) {
+    const vendor = vendors[Math.floor(Math.random() * vendors.length)];
+    const category = categories[Math.floor(Math.random() * categories.length)];
+    const amount = (Math.random() * 5000 + 100).toFixed(2);
+    const date = new Date(Date.now() - Math.random() * 90 * 24 * 60 * 60 * 1000).toLocaleDateString();
+    
+    mockData.push({
+      'Invoice ID': `INV-${String(i).padStart(4, '0')}`,
+      'Vendor': vendor,
+      'Amount': `$${amount}`,
+      'Date': date,
+      'Category': category,
+      'Status': ['Processed', 'Pending', 'Approved'][Math.floor(Math.random() * 3)],
+      'Tax': `$${(parseFloat(amount) * 0.08).toFixed(2)}`,
+      'Total': `$${(parseFloat(amount) * 1.08).toFixed(2)}`,
+      'Confidence': `${(Math.random() * 20 + 80).toFixed(1)}%`,
+    });
+  }
+  
+  return mockData;
 };
 
 // Poll backend for job status/result
